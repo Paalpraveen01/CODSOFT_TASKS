@@ -1,4 +1,5 @@
 const express = require("express");
+const pool = require("./config/db");
 
 const app = express();
 
@@ -10,8 +11,16 @@ app.get("/", (req, res) => {
     });
 });
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log(`Server running on port ${PORT}`);
+
+    try {
+        const connection = await pool.getConnection();
+        console.log("MySQL database connected successfully");
+        connection.release();
+    } catch (error) {
+        console.error("MySQL connection failed:", error.message);
+    }
 });
