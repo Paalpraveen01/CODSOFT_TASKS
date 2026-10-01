@@ -2,11 +2,13 @@ const express = require("express");
 const pool = require("./config/db");
 const studentRoutes = require("./routes/studentRoutes");
 const courseRoutes = require("./routes/courseRoutes");
+const enrollmentRoutes = require("./routes/enrollmentRoutes");
 const app = express();
 
 app.use(express.json());
 app.use("/students", studentRoutes);
 app.use("/courses", courseRoutes);
+
 app.get("/", (req, res) => {
     res.status(200).json({
         message: "Student Record Management API is running"
