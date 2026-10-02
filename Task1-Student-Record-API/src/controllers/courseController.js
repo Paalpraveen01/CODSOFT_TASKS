@@ -4,6 +4,18 @@ const createCourse = async (req, res) => {
     try {
         const { course_name, course_code, description } = req.body;
 
+        if (!course_name || !course_code) {
+            return res.status(400).json({
+                message: "Course name and course code are required"
+            });
+        }
+
+        if (course_code.length < 3 || course_code.length > 20) {
+            return res.status(400).json({
+                message: "Course code must be between 3 and 20 characters"
+            });
+        }
+
         const [result] = await pool.execute(
             `INSERT INTO courses
             (course_name, course_code, description)
@@ -17,6 +29,12 @@ const createCourse = async (req, res) => {
         });
     } catch (error) {
         console.error(error);
+
+        if (error.code === "ER_DUP_ENTRY") {
+            return res.status(409).json({
+                message: "Course code already exists"
+            });
+        }
 
         res.status(500).json({
             message: "Failed to create course"

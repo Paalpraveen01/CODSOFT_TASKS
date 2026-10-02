@@ -4,6 +4,46 @@ const createEnrollment = async (req, res) => {
     try {
         const { student_id, course_id, enrollment_date } = req.body;
 
+        if (!student_id || !course_id || !enrollment_date) {
+            return res.status(400).json({
+                message: "Student ID, course ID and enrollment date are required"
+            });
+        }
+
+        if (!Number.isInteger(Number(student_id)) || !Number.isInteger(Number(course_id))) {
+            return res.status(400).json({
+                message: "Student ID and course ID must be valid numbers"
+            });
+        }
+
+        if (isNaN(Date.parse(enrollment_date))) {
+            return res.status(400).json({
+                message: "Invalid enrollment date"
+            });
+        }
+
+        const [student] = await pool.execute(
+            "SELECT student_id FROM students WHERE student_id = ?",
+            [student_id]
+        );
+
+        if (student.length === 0) {
+            return res.status(404).json({
+                message: "Student not found"
+            });
+        }
+
+        const [course] = await pool.execute(
+            "SELECT course_id FROM courses WHERE course_id = ?",
+            [course_id]
+        );
+
+        if (course.length === 0) {
+            return res.status(404).json({
+                message: "Course not found"
+            });
+        }
+
         const [result] = await pool.execute(
             `INSERT INTO enrollments
             (student_id, course_id, enrollment_date)
@@ -18,12 +58,17 @@ const createEnrollment = async (req, res) => {
     } catch (error) {
         console.error(error);
 
+        if (error.code === "ER_DUP_ENTRY") {
+            return res.status(409).json({
+                message: "Student is already enrolled in this course"
+            });
+        }
+
         res.status(500).json({
             message: "Failed to create enrollment"
         });
     }
 };
-
 const getAllEnrollments = async (req, res) => {
     try {
         const [enrollments] = await pool.execute(

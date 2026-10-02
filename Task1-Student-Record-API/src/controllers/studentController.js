@@ -4,6 +4,32 @@ const createStudent = async (req, res) => {
     try {
         const { name, email, phone, date_of_birth } = req.body;
 
+        if (!name || !email) {
+            return res.status(400).json({
+                message: "Name and email are required"
+            });
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                message: "Invalid email format"
+            });
+        }
+
+        if (phone && !/^\d{10,15}$/.test(phone)) {
+            return res.status(400).json({
+                message: "Phone number must contain 10 to 15 digits"
+            });
+        }
+
+        if (date_of_birth && isNaN(Date.parse(date_of_birth))) {
+            return res.status(400).json({
+                message: "Invalid date of birth"
+            });
+        }
+
         const [result] = await pool.execute(
             `INSERT INTO students
             (name, email, phone, date_of_birth)
@@ -18,12 +44,17 @@ const createStudent = async (req, res) => {
     } catch (error) {
         console.error(error);
 
+        if (error.code === "ER_DUP_ENTRY") {
+            return res.status(409).json({
+                message: "Email already exists"
+            });
+        }
+
         res.status(500).json({
             message: "Failed to create student"
         });
     }
 };
-
 const getAllStudents = async (req, res) => {
     try {
         const [students] = await pool.execute(
