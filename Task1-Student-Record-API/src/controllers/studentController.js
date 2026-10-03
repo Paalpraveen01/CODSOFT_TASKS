@@ -57,9 +57,28 @@ const createStudent = async (req, res) => {
 };
 const getAllStudents = async (req, res) => {
     try {
-        const [students] = await pool.execute(
-            "SELECT * FROM students"
-        );
+        const { search } = req.query;
+
+        let query = "SELECT * FROM students";
+        let params = [];
+
+        if (search) {
+            query += `
+                WHERE name LIKE ?
+                OR email LIKE ?
+                OR phone LIKE ?
+            `;
+
+            const searchValue = `%${search}%`;
+
+            params = [
+                searchValue,
+                searchValue,
+                searchValue
+            ];
+        }
+
+        const [students] = await pool.execute(query, params);
 
         res.status(200).json(students);
     } catch (error) {

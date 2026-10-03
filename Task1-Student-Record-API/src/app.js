@@ -8,6 +8,7 @@ const app = express();
 app.use(express.json());
 app.use("/students", studentRoutes);
 app.use("/courses", courseRoutes);
+app.use("/enrollments", enrollmentRoutes);
 
 app.get("/", (req, res) => {
     res.status(200).json({

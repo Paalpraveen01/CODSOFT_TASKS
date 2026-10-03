@@ -44,9 +44,28 @@ const createCourse = async (req, res) => {
 
 const getAllCourses = async (req, res) => {
     try {
-        const [courses] = await pool.execute(
-            "SELECT * FROM courses"
-        );
+        const { search } = req.query;
+
+        let query = "SELECT * FROM courses";
+        let params = [];
+
+        if (search) {
+            query += `
+                WHERE course_name LIKE ?
+                OR course_code LIKE ?
+                OR description LIKE ?
+            `;
+
+            const searchValue = `%${search}%`;
+
+            params = [
+                searchValue,
+                searchValue,
+                searchValue
+            ];
+        }
+
+        const [courses] = await pool.execute(query, params);
 
         res.status(200).json(courses);
     } catch (error) {

@@ -71,9 +71,27 @@ const createEnrollment = async (req, res) => {
 };
 const getAllEnrollments = async (req, res) => {
     try {
-        const [enrollments] = await pool.execute(
-            "SELECT * FROM enrollments"
-        );
+        const { student_id, course_id } = req.query;
+
+        let query = "SELECT * FROM enrollments";
+        let conditions = [];
+        let params = [];
+
+        if (student_id) {
+            conditions.push("student_id = ?");
+            params.push(student_id);
+        }
+
+        if (course_id) {
+            conditions.push("course_id = ?");
+            params.push(course_id);
+        }
+
+        if (conditions.length > 0) {
+            query += " WHERE " + conditions.join(" AND ");
+        }
+
+        const [enrollments] = await pool.execute(query, params);
 
         res.status(200).json(enrollments);
     } catch (error) {
