@@ -57,13 +57,33 @@ const createStudent = async (req, res) => {
 };
 const getAllStudents = async (req, res) => {
     try {
-        const { search } = req.query;
+        const { search, sort = "student_id", order = "asc" } = req.query;
 
-        let query = "SELECT * FROM students";
+        const page = Math.max(parseInt(req.query.page) || 1, 1);
+        const limit = Math.min(
+            Math.max(parseInt(req.query.limit) || 10, 1),
+            100
+        );
+
+        const offset = (page - 1) * limit;
+
+        const allowedSortFields = {
+            student_id: "student_id",
+            name: "name",
+            email: "email",
+            phone: "phone",
+            date_of_birth: "date_of_birth",
+            created_at: "created_at"
+        };
+
+        const sortField = allowedSortFields[sort] || "student_id";
+        const sortOrder = order.toLowerCase() === "desc" ? "DESC" : "ASC";
+
+        let whereClause = "";
         let params = [];
 
         if (search) {
-            query += `
+            whereClause = `
                 WHERE name LIKE ?
                 OR email LIKE ?
                 OR phone LIKE ?
@@ -78,9 +98,30 @@ const getAllStudents = async (req, res) => {
             ];
         }
 
-        const [students] = await pool.execute(query, params);
+        const [students] = await pool.execute(
+            `SELECT * FROM students
+             ${whereClause}
+             ORDER BY ${sortField} ${sortOrder}
+             LIMIT ? OFFSET ?`,
+            [...params, limit, offset]
+        );
 
-        res.status(200).json(students);
+        const [countResult] = await pool.execute(
+            `SELECT COUNT(*) AS total
+             FROM students
+             ${whereClause}`,
+            params
+        );
+
+        const total = countResult[0].total;
+
+        res.status(200).json({
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+            data: students
+        });
     } catch (error) {
         console.error(error);
 

@@ -71,9 +71,38 @@ const createEnrollment = async (req, res) => {
 };
 const getAllEnrollments = async (req, res) => {
     try {
-        const { student_id, course_id } = req.query;
+        const {
+            student_id,
+            course_id,
+            sort = "enrollment_id",
+            order = "asc"
+        } = req.query;
 
-        let query = "SELECT * FROM enrollments";
+        const page = Math.max(parseInt(req.query.page) || 1, 1);
+
+        const limit = Math.min(
+            Math.max(parseInt(req.query.limit) || 10, 1),
+            100
+        );
+
+        const offset = (page - 1) * limit;
+
+        const allowedSortFields = {
+            enrollment_id: "enrollment_id",
+            student_id: "student_id",
+            course_id: "course_id",
+            enrollment_date: "enrollment_date"
+        };
+
+        const sortField =
+            allowedSortFields[sort] || "enrollment_id";
+
+        const sortOrder =
+            order.toLowerCase() === "desc"
+                ? "DESC"
+                : "ASC";
+
+        let whereClause = "";
         let conditions = [];
         let params = [];
 
@@ -88,12 +117,34 @@ const getAllEnrollments = async (req, res) => {
         }
 
         if (conditions.length > 0) {
-            query += " WHERE " + conditions.join(" AND ");
+            whereClause = "WHERE " + conditions.join(" AND ");
         }
 
-        const [enrollments] = await pool.execute(query, params);
+        const [enrollments] = await pool.execute(
+            `SELECT * FROM enrollments
+             ${whereClause}
+             ORDER BY ${sortField} ${sortOrder}
+             LIMIT ? OFFSET ?`,
+            [...params, limit, offset]
+        );
 
-        res.status(200).json(enrollments);
+        const [countResult] = await pool.execute(
+            `SELECT COUNT(*) AS total
+             FROM enrollments
+             ${whereClause}`,
+            params
+        );
+
+        const total = countResult[0].total;
+
+        res.status(200).json({
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+            data: enrollments
+        });
+
     } catch (error) {
         console.error(error);
 

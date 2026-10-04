@@ -41,16 +41,43 @@ const createCourse = async (req, res) => {
         });
     }
 };
-
 const getAllCourses = async (req, res) => {
     try {
-        const { search } = req.query;
+        const {
+            search,
+            sort = "course_id",
+            order = "asc"
+        } = req.query;
 
-        let query = "SELECT * FROM courses";
+        const page = Math.max(parseInt(req.query.page) || 1, 1);
+
+        const limit = Math.min(
+            Math.max(parseInt(req.query.limit) || 10, 1),
+            100
+        );
+
+        const offset = (page - 1) * limit;
+
+        const allowedSortFields = {
+            course_id: "course_id",
+            course_name: "course_name",
+            course_code: "course_code",
+            created_at: "created_at"
+        };
+
+        const sortField =
+            allowedSortFields[sort] || "course_id";
+
+        const sortOrder =
+            order.toLowerCase() === "desc"
+                ? "DESC"
+                : "ASC";
+
+        let whereClause = "";
         let params = [];
 
         if (search) {
-            query += `
+            whereClause = `
                 WHERE course_name LIKE ?
                 OR course_code LIKE ?
                 OR description LIKE ?
@@ -65,9 +92,31 @@ const getAllCourses = async (req, res) => {
             ];
         }
 
-        const [courses] = await pool.execute(query, params);
+        const [courses] = await pool.execute(
+            `SELECT * FROM courses
+             ${whereClause}
+             ORDER BY ${sortField} ${sortOrder}
+             LIMIT ? OFFSET ?`,
+            [...params, limit, offset]
+        );
 
-        res.status(200).json(courses);
+        const [countResult] = await pool.execute(
+            `SELECT COUNT(*) AS total
+             FROM courses
+             ${whereClause}`,
+            params
+        );
+
+        const total = countResult[0].total;
+
+        res.status(200).json({
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+            data: courses
+        });
+
     } catch (error) {
         console.error(error);
 
